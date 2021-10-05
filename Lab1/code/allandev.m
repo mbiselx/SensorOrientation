@@ -1,13 +1,13 @@
 function av = allandev(pdata,pname)
-   
-   data.type = pname; % need to be a string 
-   data.freq = pdata; 
+
+   data.type = pname; % need to be a string
+   data.freq = pdata;
    data.time = 1:length(pdata);
-   data.rate = 1;     % sampling at 1Hz 
-   data.units = 's';   
-   taumax = floor(length(pdata)/4); 
-   tau = 1:taumax; 
-    
+   data.rate = 1;     % sampling at 1Hz
+   data.units = 's';
+   taumax = floor(length(pdata)/4);
+   tau = 1:taumax;
+
    [av, s, errorb, tau2] = allan2(data,tau,data.type,1);
 
 
@@ -56,7 +56,7 @@ function [retval, s, errorb, tau] = allan2(data,tau,name,verbose)
 %
 % To compute the Allan deviation for the data in the variable "lt":
 % >> lt
-% lt = 
+% lt =
 %     freq: [1x86400 double]
 %     rate: 0.5
 %
@@ -224,10 +224,10 @@ if ~isfield(data,'freq')
         data.freq=diff(data.phase).*diff(data.time);
     end
     if verbose >= 1, fprintf(1,'allan: Fractional frequency data generated from phase data (M=%g).\n',length(data.freq)); end
-    data.time(1)=[]; % make time stamps correspond to freq data 
+    data.time(1)=[]; % make time stamps correspond to freq data
 end
 if size(data.freq,2) > size(data.freq,1), data.freq=data.freq'; end % ensure columns
-    
+
 s.numpoints=length(data.freq);
 s.max=max(data.freq);
 s.min=min(data.freq);
@@ -271,13 +271,13 @@ end
 %   easier/faster
 if isfield(data,'rate') && data.rate > 0 % if data rate was given
     if verbose >= 1, fprintf(1, 'allan: regular data (%g data points @ %g Hz)\n',length(data.freq),data.rate); end
-    
+
     % string for plot title
     name=[name ' (' num2str(data.rate) ' Hz)'];
-    
+
     % what is the time interval between data points?
     tmstep = 1/data.rate;
-   
+
     % Is there time data? Just for curiosity/plotting, does not impact calculation
     if isfield(data,'time')
         % adjust time data to remove any starting gap; first time step
@@ -299,8 +299,8 @@ if isfield(data,'rate') && data.rate > 0 % if data rate was given
     halftime = round(tmstep*length(data.freq)/2);
     % truncate tau to appropriate values
     tau = tau(tau >= tmstep & tau <= halftime);
-    if verbose >= 2, fprintf(1, 'allan: allowable tau range: %g to %g sec. (1/rate to total_time/2)\n',tmstep,halftime); end  
-    
+    if verbose >= 2, fprintf(1, 'allan: allowable tau range: %g to %g sec. (1/rate to total_time/2)\n',tmstep,halftime); end
+
     % save the freq data for the loop
     dfreq=data.freq;
     % find the number of data points in each tau group
@@ -311,11 +311,12 @@ if isfield(data,'rate') && data.rate > 0 % if data rate was given
     %m = m(m-round(m)<1e-8); % change to round(m) for integer test v2.22
     m = m(m==round(m));
     %m=round(m);
-    
+
     if verbose >= 1, fprintf(1,'allan: calculating Allan deviation...\n       '); end
-    
+
     % calculate the Allan deviation for each value of tau
     k=0; tic;
+    wbid=waitbar(0); % MODIFICATION
     for i = tau
         if verbose >= 2, fprintf(1,'%g ',i); end
         k=k+1;
@@ -323,7 +324,7 @@ if isfield(data,'rate') && data.rate > 0 % if data rate was given
         % truncate frequency set to an even multiple of this tau value
         freq=dfreq(1:end-rem(length(dfreq),m(k)));
         % group the data into tau-length groups or bins
-        f = reshape(freq,m(k),[]); % Vectorize!     
+        f = reshape(freq,m(k),[]); % Vectorize!
         % find average in each "tau group", y_k (each colummn of f)
         fa=mean(f,1);
         % first finite difference
@@ -334,28 +335,30 @@ if isfield(data,'rate') && data.rate > 0 % if data rate was given
 
         % estimate error bars
         sme(k)=sm(k)/sqrt(M+1);
-        
+
         if TAUBIN == 1
             % save the binning points for plotting
             fs(k,1:length(freq)/m(k))=m(k):m(k):length(freq); fval{k}=mean(f,1);
         end
-        
+
+        waitbar(k./length(tau), wbid); % MODIFICATION
+
     end % repeat for each value of tau
-    
+
     if verbose >= 2, fprintf(1,'\n'); end
     calctime=toc; if verbose >= 2, fprintf(1,'allan: Elapsed time for calculation: %e seconds\n',calctime); end
-    
-       
-    
-%% Irregular data (timestamp)   
+
+
+
+%% Irregular data (timestamp)
 elseif isfield(data,'time')
     % the interval between measurements is irregular
     %  so we must group the data by time
     if verbose >= 1, fprintf(1, 'allan: irregular rate data (no fixed sample rate)\n'); end
-    
+
     % string for plot title
     name=[name ' (timestamp)'];
-    
+
     % adjust time to remove any initial offset or zero
     dtime=data.time-data.time(1)+mean(diff(data.time));
     %dtime=data.time;
@@ -363,7 +366,7 @@ elseif isfield(data,'time')
     gap_pos=find(diff(dtime)==max(diff(dtime)));
     % what is average data spacing?
     avg_gap = mean(diff(dtime));
-    
+
     if verbose >= 2
         fprintf(1, 'allan: WARNING: irregular timestamp data (no fixed sample rate).\n');
         fprintf(1, '       Calculation time may be long and the results subject to interpretation.\n');
@@ -371,7 +374,7 @@ elseif isfield(data,'time')
         fprintf(1, '       Continue at your own risk! (press any key to continue)\n');
         pause;
     end
-    
+
     if verbose >= 1
         fprintf(1, 'allan: End of timestamp data: %g sec\n',dtime(end));
     	fprintf(1, '       Average rate: %g Hz (%g sec/measurement)\n',1/avg_gap,avg_gap);
@@ -380,9 +383,9 @@ elseif isfield(data,'time')
         end
         if max(diff(dtime)) > 5*avg_gap
             fprintf(1, '       WARNING: Max. gap in time record is suspiciously large (>5x the average interval).\n');
-        end        
+        end
     end
- 
+
 
     % find halfway point
     halftime = fix(dtime(end)/2);
@@ -391,7 +394,7 @@ elseif isfield(data,'time')
     if isempty(tau)
         error('allan: ERROR: no appropriate tau values (> %g s, < %g s)\n',max(diff(dtime)),halftime);
     end
-    
+
     % save the freq data for the loop
     dfreq=data.freq;
     dtime=dtime(1:length(dfreq));
@@ -401,20 +404,20 @@ elseif isfield(data,'time')
     k=0; tic;
     for i = tau
         if verbose >= 2, fprintf(1,'%d ',i); end
-        
+
         k=k+1; fa=[]; %f=[];
         km=0;
-        
+
         % truncate data set to an even multiple of this tau value
         freq=dfreq(dtime <= dtime(end)-rem(dtime(end),i));
         time=dtime(dtime <= dtime(end)-rem(dtime(end),i));
         %freq=dfreq;
         %time=dtime;
-        
+
         % break up the data into groups of tau length in sec
         while i*km < time(end)
             km=km+1;
-                        
+
             % progress bar
             if verbose >= 2
                 if rem(km,100)==0, fprintf(1,'.'); end
@@ -423,7 +426,7 @@ elseif isfield(data,'time')
 
             f = freq(i*(km-1) < time & time <= i*km);
             f = f(~isnan(f)); % make sure values are valid
-            
+
             if ~isempty(f)
                 fa(km)=mean(f);
             else
@@ -440,9 +443,9 @@ elseif isfield(data,'time')
                 end
                 fval{k}=fa;
             end % save tau bin plot points
-            
+
         end
-        
+
         if verbose >= 2, fprintf(1,'\n'); end
 
         % first finite difference of the averaged results
@@ -453,13 +456,13 @@ elseif isfield(data,'time')
 
         % estimate error bars
         sme(k)=sm(k)/sqrt(M+1);
-        
+
 
     end
 
     if verbose == 2, fprintf(1,'\n'); end
     calctime=toc; if verbose >= 2, fprintf(1,'allan: Elapsed time for calculation: %e seconds\n',calctime); end
-    
+
 
 else
     error('allan: WARNING: no DATA.rate or DATA.time! Type "help allan" for more information. [err2]');
@@ -470,7 +473,7 @@ end
 %% Plotting
 
 if verbose >= 2 % show all data
-    
+
     % plot the frequency data, centered on median
     if size(dtime,2) > size(dtime,1), dtime=dtime'; end % this should not be necessary, but dsplot 1.1 is a little bit brittle
     try
@@ -529,7 +532,7 @@ if verbose >= 2 % show all data
         end
         axis auto
     end % End optional bin plot
-    
+
 end % end plot raw data
 
 
@@ -562,10 +565,10 @@ if verbose >= 1 % show ADEV results
         % expand the x axis a little bit so that the errors bars look nice
         adax = axis;
         axis([adax(1)*0.9 adax(2)*1.1 adax(3) adax(4)]);
-        
+
         % display the minimum value
         fprintf(1,'allan: Minimum ADEV value: %g at tau = %g seconds\n',min(sm),tau(sm==min(sm)));
-        
+
     elseif verbose >= 1
         fprintf(1,'allan: WARNING: no values calculated.\n');
         fprintf(1,'       Check that TAU > 1/DATA.rate and TAU values are divisible by 1/DATA.rate\n');
@@ -573,7 +576,7 @@ if verbose >= 1 % show ADEV results
     end
 
 end % end plot ADEV data
-    
+
 retval = sm;
 errorb = sme;
 
