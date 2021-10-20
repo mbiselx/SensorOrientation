@@ -7,6 +7,4 @@ function out = autocorrelation(x)
 
     out = out ./ size(x,2);
 
-    %out = out./max(out,[],2);
-
 end
