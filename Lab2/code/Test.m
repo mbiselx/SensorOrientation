@@ -65,12 +65,7 @@ pause(.1)
 
 %% filtering the sinusoidal noise out of a signal
 
-%     psd_fftsft = fftshift(psd1, 1);
-%     idx1 = find(psd_fftsft(1:length(data1), 1) >= max(psd1(:,1))/10);
-%     idx2 = find(psd_fftsft(1:length(data1), 2) >= max(psd1(:,2))/10);
-%     f_n1 = (idx1-1)/length(psd1);
-%     f_n2 = (idx2-1)/length(psd1);
-%     epsil = 10/length(psd1);
+
     data1_f = [bandstop(data1_0m(:,1), [5, 10], f1), ...
                bandstop(data1_0m(:,2), [5, 10], f1)];
 

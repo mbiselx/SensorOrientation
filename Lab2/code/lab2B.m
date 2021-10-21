@@ -46,26 +46,31 @@ psd2     = real(PowerSpectralDensity(data2_0m.')).';
 [var2, tau2] = allanvar(data2_0m, 'octave', f2);
 
 
+% filter out deterministic elements of the noise
+psd_fftsft = fftshift(psd1, 1);
+[~, idx] = maxk(psd_fftsft(20:length(data1),:), 2); % dont take the central spike
+f = (idx-1+20)*f1/length(psd1);
+
+data1f = [bandstop(data1_0m(:,1), [min(f(:,1))-1, max(f(:,1))+1], f1), ...
+          bandstop(data1_0m(:,2), [min(f(:,2))-1, max(f(:,2))+1], f1)];
+
+% calculate new filtered noise characteristics 
+ac1f     = real(autocorrelation(data1f.')).';
+psd1f    = real(PowerSpectralDensity(data1f.')).';
+[var1f, tau1f] = allanvar(data1f, 'octave', f1);
+
+
 %% II. Verify: check the parameters by producing a similar signal
 
 %% model 1: LN200
     disp("Calculating noise model for dataset 1 ...")
 
-    % periodic process
-    psd_fftsft = fftshift(psd1, 1);
-    [A, idx] = maxk(psd_fftsft(20:length(data1),:), 5); % dont take the central spike
-    PER = PeriodicProcess(length(data1), idx+20, A);
-
     % white noise process
-    WN    = white_noise(length(t1), std(data1_0m).'/2).';
-
-    % quantisation noise process
-    QNT = quantization_noise_parameter(data1_0m(:,1));
+    std_wn = std(data1_f);
+    WN    = white_noise(length(t1), std_wn.').';
 
     % model
-%     model1 = PER;
-%     model1 = PER + WN;
-    model1 = quantization_noise(WN+PER, QNT);
+    model1 = WN;
 
     % calculate the model characteristics 
     acm1   = real(autocorrelation(model1.')).';
@@ -74,14 +79,16 @@ psd2     = real(PowerSpectralDensity(data2_0m.')).';
 
     % plot a comparison between the noise and the noise model
 if plt 
-    plot_noise_parameters(t1, {data1_0m(:,1), ac1(:,1),  psd1(:,1), [ tau1,  var1(:,1)]}, strcat(name1, ' R_Y'), 11);
-    plot_noise_parameters(t1, {model1(:,1),  acm1(:,1), psdm1(:,1), [taum1, varm1(:,1)]}, strcat(name1, ' R_Y'), 11);
-    legend({'real', 'model'})
+    plot_noise_parameters(t1, {data1_0m(:,1), ac1(:,1),  psd1(:,1), [ tau1,  var1(:,1)]}, strcat(name1, ' R_Y'), 'b', 11);
+    plot_noise_parameters(t1, {data1f(:,1),  ac1f(:,1), psd1f(:,1), [tau1f, var1f(:,1)]}, strcat(name1, ' R_Y'), 'c', 11);
+    plot_noise_parameters(t1, {model1(:,1),  acm1(:,1), psdm1(:,1), [taum1, varm1(:,1)]}, strcat(name1, ' R_Y'), 'r:', 11);
+    legend({'original', 'filtered', 'model'})
     hold off;
 
-    plot_noise_parameters(t1, {data1_0m(:,2), ac1(:,2),  psd1(:,2), [ tau1,  var1(:,2)]}, strcat(name1, ' R_Z'), 12);
-    plot_noise_parameters(t1, {model1(:,2),  acm1(:,2), psdm1(:,2), [taum1, varm1(:,2)]}, strcat(name1, ' R_Z'), 12);
-    legend({'real', 'model'})
+    plot_noise_parameters(t1, {data1_0m(:,2), ac1(:,2),  psd1(:,2), [ tau1,  var1(:,2)]}, strcat(name1, ' R_Z'), 'b', 12);
+    plot_noise_parameters(t1, {data1f(:,2), ac1f(:,2),  psd1f(:,2), [tau1f, var1f(:,2)]}, strcat(name1, ' R_Z'), 'c', 12);
+    plot_noise_parameters(t1, {model1(:,2),  acm1(:,2), psdm1(:,2), [taum1, varm1(:,2)]}, strcat(name1, ' R_Z'), 'r:', 12);
+    legend({'original', 'filtered', 'model'})
     hold off;
 end 
 pause(.1)
@@ -89,33 +96,21 @@ pause(.1)
 %% model 2: NAVCHIP
     disp("calculating noise model for dataset 2...")
 
-    % periodic process
-    psd_fftsft = fftshift(psd2, 1);
-    [A, idx] = maxk(psd_fftsft(20:length(data2),:), 5); % dont take the central spike
-    PER = PeriodicProcess(length(data2), idx+20, A/5);
-    
-
     % Gauss-Markov process
-    T2 = [100; 50];
-%     std_GM = 
+    T2 = [100; 50]
+    std(data2_0m./T2')
     g2 = white_noise(length(t2), std(data2_0m./T2').');
     GMP = GaussMarkovProcess(g2, T2, 1/f2).';
 
     % white noise process
+    std(data2_0m).'/2
     WN    = white_noise(length(t2), std(data2_0m).'/2).';
 
-    % random walk process
-%     RW    = random_walk(length(t2), std(data2_0m).').';
-
     % quantisation noise process
-    QNT   = quantization_noise_parameter(data2_0m(:,2));
+    QNT   = quantization_noise_parameter(data2_0m(:,2))
 
     % model
-%     model2 = PER;
-%     model2 = GMP;
-%     model2 = GMP + WN;
-%     model2 = PER + WN;
-    model2 = quantization_noise(PER+GMP+WN, QNT);
+    model2 = quantization_noise(GMP+WN, QNT);
 
     % calculate the model characteristics 
     acm2   = real(autocorrelation(model2.')).';
@@ -124,13 +119,13 @@ pause(.1)
 
     % plot a comparison between the noise and the noise model
 if plt 
-    plot_noise_parameters(t2, {data2_0m(:,1), ac2(:,1),  psd2(:,1), [ tau2,  var2(:,1)]}, strcat(name2, ' R_Y'), 21);
-    plot_noise_parameters(t2, {model2(:,1),  acm2(:,1), psdm2(:,1), [taum2, varm2(:,1)]}, strcat(name2, ' R_Y'), 21);
+    plot_noise_parameters(t2, {data2_0m(:,1), ac2(:,1),  psd2(:,1), [ tau2,  var2(:,1)]}, strcat(name2, ' R_Y'), 'b', 21);
+    plot_noise_parameters(t2, {model2(:,1),  acm2(:,1), psdm2(:,1), [taum2, varm2(:,1)]}, strcat(name2, ' R_Y'), 'r:', 21);
     legend({'real', 'model'})
     hold off;
 
-    plot_noise_parameters(t2, {data2_0m(:,2), ac2(:,2),  psd2(:,2), [ tau2,  var2(:,2)]}, strcat(name2, ' R_Z'), 22);
-    plot_noise_parameters(t2, {model2(:,2),  acm2(:,2), psdm2(:,2), [taum2, varm2(:,2)]}, strcat(name2, ' R_Z'), 22);
+    plot_noise_parameters(t2, {data2_0m(:,2), ac2(:,2),  psd2(:,2), [ tau2,  var2(:,2)]}, strcat(name2, ' R_Z'), 'b', 22);
+    plot_noise_parameters(t2, {model2(:,2),  acm2(:,2), psdm2(:,2), [taum2, varm2(:,2)]}, strcat(name2, ' R_Z'), 'r:', 22);
     legend({'real', 'model'})
     hold off;
 end 

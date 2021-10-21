@@ -1,7 +1,9 @@
-*.gdoc
+*.asv
 
+*.gdoc
 *.doc
 *.docx
+
 *.pdf
 *.png
 *.jpg
