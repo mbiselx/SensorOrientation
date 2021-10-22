@@ -1,4 +1,5 @@
 addpath("functions")
+addpath("other_files")
 
 clc
 close all
@@ -66,8 +67,8 @@ psd1f    = real(PowerSpectralDensity(data1f.')).';
     disp("Calculating noise model for dataset 1 ...")
 
     % white noise process
-    std_wn = std(data1_f);
-    WN    = white_noise(length(t1), std_wn.').';
+    std_wn = sqrt([4.693925e-8, 5.079151e-8]);
+    WN     = white_noise(length(t1), std_wn.').';
 
     % model
     model1 = WN;
@@ -96,21 +97,29 @@ pause(.1)
 %% model 2: NAVCHIP
     disp("calculating noise model for dataset 2...")
 
-    % Gauss-Markov process
-    T2 = [100; 50]
-    std(data2_0m./T2')
-    g2 = white_noise(length(t2), std(data2_0m./T2').');
-    GMP = GaussMarkovProcess(g2, T2, 1/f2).';
-
     % white noise process
-    std(data2_0m).'/2
-    WN    = white_noise(length(t2), std(data2_0m).'/2).';
+    std_wn = sqrt([7.197769e-07, 3.659425e-07]);
+    WN     = white_noise(length(t2), std_wn.').';
 
-    % quantisation noise process
-    QNT   = quantization_noise_parameter(data2_0m(:,2))
+    % random walk process
+    std_rw = sqrt([5.356652e-13, 2.859388e-15]);
+    RW     = random_walk(length(t2), std_rw.').';
+
+    % quantisation noise process (read from R-generated file)
+    QNT    = [csvread('QN_NavChip_Y.csv', 1, 1), ...
+              csvread('QN_NavChip_Z.csv', 1, 1)];
+    QNT    = QNT(1:length(t2), :);
+
+    % Gauss-Markov process
+    T2     = 1./[9.641669e-02, 7.664966e-02];
+    var_GM = [1.356716e-08, 1.226837e-08];
+    q      = var_GM.*(1-exp(-2/f2./T2))*f2; % why *f2 ? must be a bug
+    g2     = white_noise(length(t2), sqrt(q).');
+    GMP    = GaussMarkovProcess(g2, T2.', 1/f2).';
 
     % model
-    model2 = quantization_noise(GMP+WN, QNT);
+    model2 = QNT+GMP+WN+RW;
+
 
     % calculate the model characteristics 
     acm2   = real(autocorrelation(model2.')).';
