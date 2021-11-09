@@ -9,8 +9,8 @@ addpath('functions')
 % the mapping frame is defined as a NED frame
 % the body frame is defined with the x axis along the direction of motion 
 
-f     = 50;     % [Hz]      sampling frequency
-int_method = 'Trapezoid'; %   integration method 
+f     = 10;     % [Hz]      sampling frequency
+int_method = 'RK4'; %   integration method 
 
 R     = 500;    % [m]       radius of the trajectory 
 w     = pi/100; % [rad/s]   angular speed
@@ -47,6 +47,8 @@ azth_err = zeros(size(wb));
 
 % simulation loop
 k = 1;
+dxmax = 0;
+dymax = 0;
 for t = dt:dt:T
     % use polar cordinates to generate the true position, velocity and
     % heading
@@ -68,27 +70,35 @@ for t = dt:dt:T
     v_err(k)    = sqrt(delta_v.'*delta_v);
     azth_err(k) = mod(azth_est - azth_t + pi, 2*pi) - pi; % make sure it's in [-pi:pi]
 
+    if abs(dxmax) < abs(delta_x(1))
+        dxmax = delta_x(1);
+    end
+    if abs(dymax) < abs(delta_x(2))
+        dymax = delta_x(2);
+    end
+
     % do a fun plot
-% %     if toc > 5e-3
-%     if ~rem(t,10*dt)
-%         fig = plot_everything({trajectory, x_t, x_est}, {dt:dt:t, fb(1, 1:k), fb(2, 1:k), rad2deg(wb(1:k))});
-% %         tic;
-% 
-% %         Capture the plot as an image 
-%         [imind,cm] = rgb2ind(frame2im(getframe(fig)),256); 
-% %         Write to the GIF File 
-%         filename = 'test.gif';
-%         if t == 0 
-%           imwrite(imind,cm,filename, 'gif', 'Loopcount',inf, 'DelayTime', .05); 
-%         else 
-%           imwrite(imind,cm,filename, 'gif','WriteMode','append', 'DelayTime', .05); 
-%         end 
-%     end
+%     if toc > 5e-3
+    if ~rem(t,10*dt)
+        fig = plot_everything({trajectory, x_t, x_est}, {dt:dt:t, fb(1, 1:k), fb(2, 1:k), rad2deg(wb(1:k))});
+%         tic;
+
+%         Capture the plot as an image 
+        [imind,cm] = rgb2ind(frame2im(getframe(fig)),256); 
+%         Write to the GIF File 
+        filename = 'test.gif';
+        if t == 10*dt 
+          imwrite(imind,cm,filename, 'gif', 'Loopcount',inf, 'DelayTime', .05); 
+        else 
+          imwrite(imind,cm,filename, 'gif', 'WriteMode', 'append', 'DelayTime', .05); 
+        end 
+    end
 
     k = k+1;
 end 
 
 %% plot the errors 
+fprintf("The maximal error is [%g, %g] [m].\n", dxmax, dymax)
 fprintf("The final error is [%g, %g] [m].\n", delta_x(1), delta_x(2))
 
 figure

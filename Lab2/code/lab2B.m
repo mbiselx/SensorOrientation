@@ -113,7 +113,7 @@ pause(.1)
     % Gauss-Markov process
     T2     = 1./[9.641669e-02, 7.664966e-02];
     var_GM = [1.356716e-08, 1.226837e-08];
-    q      = var_GM.*(1-exp(-2/f2./T2))*f2; % why *f2 ? must be a bug
+    q      = var_GM.*(1-exp(-2/f2./T2))*f2; % why *f2 ? must be a bug %% EDIT: it's not, it comes from discretisation
     g2     = white_noise(length(t2), sqrt(q).');
     GMP    = GaussMarkovProcess(g2, T2.', 1/f2).';
 

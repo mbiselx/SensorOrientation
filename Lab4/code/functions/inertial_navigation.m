@@ -56,7 +56,7 @@ function varargout = inertial_navigation(varargin)
                         integrator = @(f, t) f(:,1)*t;
                     case 'Trapezoid'
                         integrator = @(f, t) .5*(f(:,1)+f(:,2))*t;
-                    case 'Simpson' % this is garbage 
+                    case 'RK4' % this doesn't work??
                         integrator = @(f, t) (f(:,1)+4*f(:,2)+f(:,3))*t/6;
                     otherwise
                         error("Unknown Integration Method '%s'", varargin{6})

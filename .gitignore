@@ -1,9 +1,12 @@
 *.asv
+*\desktop.ini
 
 *.gdoc
 *.doc
 *.docx
 
 *.pdf
+
 *.png
 *.jpg
+*.gif
