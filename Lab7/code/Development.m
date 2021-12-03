@@ -31,7 +31,7 @@ R = [ rpn, 0 ; 0, rpe];
 
 % predictor
 xtilde = Phi * xhat;
-Ptilde = Phi * Phat * Phi.' + Qk
+Ptilde = Phi * Phat * Phi.' + Qk;
 
 % gain
 K = simplify( Ptilde * H.' / (H*Ptilde*H.' + R) , 'steps', 50);

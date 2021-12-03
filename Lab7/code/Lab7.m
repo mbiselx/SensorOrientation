@@ -10,7 +10,7 @@ set(groot,'DefaultLineLineWidth',.5)
 % the mapping frame is defined as a NED frame
 % the body frame has the x1 axis in the direction of motion 
 
-f             = 5;              % [Hz]      sampling frequency
+f             = 1;              % [Hz]      sampling frequency
 dt            = 1/f;            % [s]       sampling period 
 
 GIFname       = 'Real_Eul_10Hz.gif';     % GIF output file
@@ -24,9 +24,8 @@ sigma_GPS     = [.5; .5];       % [m]       GPS measurement noise
 
 sigma_mov     = [0.05; 0.05];   % [m/s^2/Hz]
 % sigma_mov     = 0.06 * [1;1];      % [m/s^2/Hz]
-% sigma_mov     = r*w/dt/sqrt(2*f)*[1; 1]   % [m/s^2/Hz]
 
-Iter          = 100;
+Iter          = 500;
 innov         = cell(1, Iter);
 GPS_std       = cell(1, Iter);
 KF_std        = cell(1, Iter);
@@ -79,7 +78,7 @@ for iter = 1:Iter
             k_GPS           = k;
             kk              = floor(k*f_GPS/f);
     
-            x_GPS_err(:,kk) = sigma_GPS.*randn(2,1);            % Task 4.1
+            x_GPS_err(:,kk) = sigma_GPS.*randn(size(x_t));            % Task 4.1
             x_GPS(:,kk)     = x_t + x_GPS_err(:,kk);
     
             [xhat(:,kk), Phat, innov{iter}(:,kk)] = KalmanFilter("update", x_GPS(:,kk), R, H); % Task 4.4
@@ -122,38 +121,38 @@ for iter = 1:Iter
     GPS_std{iter} = sqrt(sum(var(x_GPS_err, 0, 2)));
     
      % Task 4.2   
-    KF_std{iter} = sqrt(sum(var(xhat_err, 0, 2)));
+    KF_std{iter}  = sqrt(sum(var(xhat_err, 0, 2)));
     
     
      % Task 4.3   
-    if ~exist('fig1', 'var')
-        fig1 = figure();
-        fig1.Name = "Estimated position quality";
-    else 
-        figure(fig1)
-    end 
-    plot(dt_GPS * (1:length(sigma_KFP)), sigma_KFP), hold on
-%     xlabel("time [s]"), ylabel("estimated positioning quality[m]")
-    
-    
-     % Task 4.4   
-    if ~exist('fig2', 'var')
-        fig2 = figure();
-        fig2.Name = "Evolution of KF-innovation";
-    else 
-        figure(fig2)
-    end 
-    subplot(2,1,1)
-        h1 =      plot(dt_GPS * (1:length(innov{iter})), innov{iter}(1,:), 'b');
-        hold on
-        h1 = [h1, plot(dt_GPS * (1:length(innov{iter})), innov{iter}(2,:), 'r')];
-%         xlabel("time [s]"), ylabel("innovation [m]")
-    subplot(2,1,2)
-        stb = 25; % stabilisation threshold
-        h2 =      plot(dt_GPS * (stb:length(innov{iter})), innov{iter}(1,stb:end), 'b');
-        hold on
-        h2 = [h2, plot(dt_GPS * (stb:length(innov{iter})), innov{iter}(2,stb:end), 'r')];
-%         xlabel("time [s]"), ylabel("innovation [m]")
+%     if ~exist('fig1', 'var')
+%         fig1 = figure();
+%         fig1.Name = "Estimated position quality";
+%     else 
+%         figure(fig1)
+%     end 
+%     plot(dt_GPS * (1:length(sigma_KFP)), sigma_KFP), hold on
+% %     xlabel("time [s]"), ylabel("estimated positioning quality[m]")
+%     
+%     
+%      % Task 4.4   
+%     if ~exist('fig2', 'var')
+%         fig2 = figure();
+%         fig2.Name = "Evolution of KF-innovation";
+%     else 
+%         figure(fig2)
+%     end 
+%     subplot(2,1,1)
+%         h1 =      plot(dt_GPS * (1:length(innov{iter})), innov{iter}(1,:), 'b');
+%         hold on
+%         h1 = [h1, plot(dt_GPS * (1:length(innov{iter})), innov{iter}(2,:), 'r')];
+% %         xlabel("time [s]"), ylabel("innovation [m]")
+%     subplot(2,1,2)
+%         stb = 25; % stabilisation threshold
+%         h2 =      plot(dt_GPS * (stb:length(innov{iter})), innov{iter}(1,stb:end), 'b');
+%         hold on
+%         h2 = [h2, plot(dt_GPS * (stb:length(innov{iter})), innov{iter}(2,stb:end), 'r')];
+% %         xlabel("time [s]"), ylabel("innovation [m]")
 
 
     fprintf(".");
