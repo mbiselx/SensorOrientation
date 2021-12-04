@@ -102,7 +102,5 @@ function fig = plot_everything(varargin)
 
     end
 
-    drawnow
-
 end
 

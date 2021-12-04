@@ -4,36 +4,43 @@ clear
 
 addpath("functions\")
 
-%%
-syms q [2,1] 
-syms r [2,1] 
+%% variables
+syms Q [2,1] 
+syms R [2,1] 
 syms delta_t real
-syms x0 [6,1] real
-syms p0 [6,1] real 
+syms x0 [3,1] real
+syms P0 [3,1] real 
 syms z [2,1] real
 
-P0 = diag(p0);
+P0 = diag(P0);
+Q  = diag(Q);
+R  = diag(R);
 
 Phat = P0;
 xhat = x0;
 
-% time derivative system
-F  = diag(ones(1,4), 2);
-H = [eye(2), zeros(2,4)];
-G = [zeros(4,2); eye(2)];
+%% system
 
-% discretize
-Phi = expm(F * delta_t);
+F       = zeros(3); F(2,3) = 1;
+G       = [1 0 ; 0 0 ; 0 1];
 
-% system noise
-Q = diag(q);
-Qk = int(Phi*G*Q*G.'*Phi.', delta_t, 0, delta_t);
+h       = @(x) (x(1) * [cos(x(2)); ...
+                        sin(x(2))]);
+evalH   = @(x) [cos(x(2))  -x(1)*sin(x(2))  0;
+                sin(x(2))   x(1)*cos(x(2))  0];
 
-% measurement noise 
-R = diag(r);
+% transformation to cartesian space [p; v] = m(x)
+m       = @(x) ([  x(1) * cos(x(2)); ...
+                   x(1) * sin(x(2)); ...
+                 - x(1) * x(3) * sin(x(2)); ...
+                   x(1) * x(3) * cos(x(2))]); 
 
-% Kalman filtering loop
-N = 2;
+
+%% discretize the system
+[Phi, Qk] = discretize_model(F, G, Q, delta_t);
+
+%% Kalman filtering loop
+N = 0;
 disp("starting the training run")
 for i = 1:N
     % predictor
@@ -41,33 +48,15 @@ for i = 1:N
     Ptilde = Phi * Phat * Phi.' + Qk;
     
     % gain
+    H = evalH(xtilde);
     K = simplify( (Ptilde * H.') / (H * Ptilde * H.' + R) );
     
     % state update 
-    xhat = xtilde + K * (z-H*xtilde);
+    xhat = xtilde + K * (z-h(xtilde));
     
     % covariance update 
-    Phat = (eye(size(K,1), size(H,2)) - K*H)*Ptilde;
+    Phat = simplify(eye(size(K,1), size(H,2)) - K*H)*Ptilde;
 end
 disp("finished the training run")
 
-%% now do the same with the KalmanFilter function
-
-% Initialize
-KalmanFilter("init", x0, P0);
-
-% Kalman filtering loop
-disp("starting the testing run")
-for i=1:N
-    [xtilde_KF, Ptilde_KF]  = KalmanFilter("predict", F, G, Q, delta_t);
-    [xhat_KF, Phat_KF]      = KalmanFilter("update", z, H, R);
-end
-disp("finished the testing run")
-
-% verify results 
-assert(~any(simplify(xtilde_KF - xtilde), "all"), "bad xtilde?");
-assert(~any(simplify(Ptilde_KF - Ptilde), "all"), "bad Ptilde?");
-
-assert(~any(simplify(xhat_KF - xhat), "all"), "bad xhat?");
-assert(~any(simplify(Phat_KF - Phat), "all"), "bad Phat?");
 
