@@ -1,13 +1,13 @@
 % paternoster
 
-if length(dbstack) <= 1 % the script is being run in stand-alone: clear the workspace 
-    clc 
+if length(dbstack) <= 1 % the script is being run in stand-alone: clear the workspace
+    clc
     close all
     clear
 end
 
 
-% set default values 
+% set default values
 if ~exist('LabV', 'var')            % 7 : const. vel model
     LabV          = 9;              % 8 : const. acc model
                                     % 9 : uniform circle model
@@ -24,14 +24,14 @@ addpath("data")
 
 %% simulate 2D circular motion
 % the mapping frame is defined as a NED frame
-% the body frame has the x1 axis in the direction of motion 
+% the body frame has the x1 axis in the direction of motion
 
 f             = 1;             % [Hz]      sampling frequency
-dt            = 1/f;            % [s]       sampling period 
+dt            = 1/f;            % [s]       sampling period
 
 
 % calculate trajectory to follow
-trajectory_parameters       % get the trajectory parameters such as r, w, etc.. 
+trajectory_parameters       % get the trajectory parameters such as r, w, etc..
 trajectory    = [r*cos(2*pi*(0:1/50:1));
                  r*sin(2*pi*(0:1/50:1))];
 
@@ -41,7 +41,7 @@ initialization_parameters   % get the initialization values
 
 
 %% allocate memory
-% allocate memory for iterations 
+% allocate memory for iterations
 innov         = cell(1, Iter);
 xhat_err      = cell(1, Iter);
 GPS_std       = cell(1, Iter);
@@ -62,7 +62,7 @@ sigma_KFPP    = zeros(1, K);
 qk_KFP        = zeros(1, K);
 
 
-%% do iterations 
+%% do iterations
 for iter = 1:Iter
     %% (re)initialize the Kalman Filter with position & velocity estimations
     KalmanFilter('init', x0, P0);
@@ -72,31 +72,31 @@ for iter = 1:Iter
     xhat_err{iter} = zeros(4, KK);
     sigma_KFP{iter}= zeros(1, KK);
 
-    
+
     %% simulation loop
     k_GPS = 0;
     kk = 0;
     for k = 1:K
         % current simulation time
         t = dt*k;
-    
-        % use polar coordinates to simulate the true position & velocity 
+
+        % use polar coordinates to simulate the true position & velocity
         p_t         =   r*[ cos(w*t);  sin(w*t)];
         v_t         = w*r*[-sin(w*t);  cos(w*t)];
-    
+
         % predict current position
         [xtilde(:,k), Ptilde]= KalmanFilter('predict', F, G, Q, dt*(k-k_GPS));
-    
+
         % estimate the current position from GPS data
         if ~rem(k, round(f/f_GPS))
             % indices shenanigans
             k_GPS           = k;                % keep track of time since last GPS update
             kk              = floor(k*f_GPS/f); % index of the current GPS update
-    
+
             % create GPS data
             z_GPS_err(:,kk) = sigma_GPS.*randn(size(p_t));
             z_GPS(:,kk)     = p_t + z_GPS_err(:,kk);
-    
+
             % USE THE KALMAN FILTER, LUKE
             if LabV < 9
                 [xhat(:,kk), Phat, innov{iter}(:,kk)] = KalmanFilter('update', z_GPS(:,kk), H, R);
@@ -104,20 +104,20 @@ for iter = 1:Iter
                 [xhat(:,kk), Phat, innov{iter}(:,kk)] = KalmanFilter('update', z_GPS(:,kk), h, H, R);
             end
 
-            % prepare outputs 
+            % prepare outputs
             estd_traj(:,k)  = h(xhat(1:2, kk));
             P               = M(xhat(:,kk)) * Phat * M(xhat(:,kk)).';
 
             xhat_err{iter}(:,kk)  = [p_t; v_t] - m(xhat(:,kk));
             sigma_KFP{iter}(:,kk) = sqrt(sum(diag(P(1:2, 1:2))));
-            
-        else 
-            % prepare outputs 
+
+        else
+            % prepare outputs
             estd_traj(:,k)  = h(xtilde(:, k));
             P = M(xtilde(:,k)) * Ptilde * M(xtilde(:,k)).';
         end
-        sigma_KFPP(:,k) = sqrt(sum(diag(P(1:2, 1:2)))); % ugh why does Matlab not support indexing a function output?? 
-      
+        sigma_KFPP(:,k) = sqrt(sum(diag(P(1:2, 1:2)))); % ugh why does Matlab not support indexing a function output??
+
 
 % %         do a fun plot
 % %         if ~rem(k, round(f))
@@ -126,14 +126,14 @@ for iter = 1:Iter
 %                                     z_GPS(:, 1:kk)});
 %             ylim([-27, 27])
 %             axis manual
-% 
+%
 %             if (k==1), fig.WindowState = 'maximized'; end
 %             drawnow
-% 
+%
 % %             makeGIF(fig, sprintf("Lab%d.gif", LabV), 0.01, (k==1))
 % %         end
 
-    end    
+    end
 
 %     if plt || exist("fig", 'var')
 %         fig = plot_everything({trajectory, p_t, estd_traj(:,end), ...
@@ -146,9 +146,9 @@ for iter = 1:Iter
 
     %% do tasks
 
-    % Task 4.1 : GPS ERROR 
+    % Task 4.1 : GPS ERROR
     GPS_std{iter} = sqrt(sum(var(z_GPS_err, 0, 2)));
-    
+
     % Task 4.2 : true positioning and velocity quality
     KFp_std{iter}  = sqrt(sum(var(xhat_err{iter}(1:2,:), 0, 2)));
     KFv_std{iter}  = sqrt(sum(var(xhat_err{iter}(3:4,:), 0, 2)));
@@ -165,7 +165,7 @@ iinnov  = cell2mat(innov);
 %% output
 
 
-% Task 4.1 : GPS ERROR 
+% Task 4.1 : GPS ERROR
 disp('<strong>Task 4.1</strong>')
 m_GPS_std = mean(GPS_std);
 fprintf("mean GPS std() is %f m \n", m_GPS_std)
@@ -186,7 +186,7 @@ if ((Iter <= 5) && (Iter > 1)), disp(KFv_std); end
 stb        = 50; % stabilisation threshold
 disp('<strong>Task 4.3</strong>')
 fprintf("KF-prediction quality at stabilization is %f m \n", sigma_KFP{end}(end))
-if plt 
+if plt
     fprintf("plotting evolution of KF-prediction quality...\n")
 
     fig1 = figure(1);
@@ -205,7 +205,7 @@ end
 % Task 4.4 : innovation evolution
 mean_innov = mean(reshape(cell2mat(innov), 2, [], iter), 3);
 stb_iinnov = cell2mat(cellfun(@(i) i(:, stb:end), innov, 'UniformOutput', false));
-if plt 
+if plt
     disp('<strong>Task 4.4</strong>')
     fprintf("plotting evolution of KF-innovation...\n")
 
@@ -222,7 +222,7 @@ if plt
             h2 =      plot(dt_GPS * (1:length(innov{iter})), innov{iter}(1,:), 'b');
             h2 = [h2, plot(dt_GPS * (1:length(innov{iter})), innov{iter}(2,:), 'r')];
     end
-    
+
     % h1 = []; h2 = [];
     subplot(2,1,1)
         h1 = [h1, plot(dt_GPS * (1:length(mean_innov)), mean_innov(1,:), 'b-.', 'LineWidth', 1.5)]; hold on
@@ -249,7 +249,7 @@ for iter = 1:Iter
     h(1) = plot(dt*(1:length(xhat_err{iter})), xhat_err{iter}(3,:), 'b', 'LineWidth', .25);
     l{1} = "v_{err N}";
     hold on
-    h(2) = plot(dt*(1:length(xhat_err{iter})), xhat_err{iter}(4,:), 'r', 'LineWidth', .25);  
+    h(2) = plot(dt*(1:length(xhat_err{iter})), xhat_err{iter}(4,:), 'r', 'LineWidth', .25);
     l{2} = "v_{err E}";
 end
 h1 = plot(dt*(1:length(xhat_err{iter})), mean_xhat_err(1,:), 'b-.', 'LineWidth', 1.5);
@@ -257,8 +257,8 @@ hold on
 h2 = plot(dt*(1:length(xhat_err{iter})), mean_xhat_err(2,:), 'r-.', 'LineWidth', 1.5);
 xlabel("time [s]"), ylabel("veloctiy error [m/s]")
 legend([h, h1, h2], [l, "mean v_{err N}", "mean v_{err E}"])
-% 
-% 
+%
+%
 % fig4 = figure(4);    % plot innovation histograms
 % fig4.Name = "Innovation Histogram (full)";
 % h1 = []; h2 = []; l1 = []; l2 = [];
@@ -277,9 +277,9 @@ legend([h, h1, h2], [l, "mean v_{err N}", "mean v_{err E}"])
 % h2 = [h2, histogram(mean_innov(2,:), 'FaceColor', 'r')]; hold on;
 % legend(h2, [l2, "mean innov_{E}"])
 % sgtitle("innovation over full experiment")
-% 
-% 
-% fig5 = figure(5);    % plot stabilized innovation histograms 
+%
+%
+% fig5 = figure(5);    % plot stabilized innovation histograms
 % fig5.Name = "Innovation Histogram (stable)";
 % h1 = []; h2 = []; l1 = []; l2 = [];
 % for iter = 1:Iter
@@ -306,7 +306,7 @@ irange = [linspace(bl(1),bh(1)); linspace(bl(2), bh(2))];
 istd   = std(iinnov, [], 2);
 imean  = mean(iinnov, 2);
 subplot(2,1,1)
-h1 = histogram(iinnov(1,:),'Normalization', 'pdf', 'FaceColor', 'b'); hold on 
+h1 = histogram(iinnov(1,:),'Normalization', 'pdf', 'FaceColor', 'b'); hold on
 h1 = [h1, plot(irange(1,:), normpdf(irange(1,:), imean(1,:), istd(1,:)), 'k', 'LineWidth', 1.5)];
 l1 = ["innov_{N}", "Normal distr."];
 xlabel("innovation [m]")
@@ -326,7 +326,7 @@ irange = [linspace(bl(1),bh(1)); linspace(bl(2), bh(2))];
 istd   = std(stb_iinnov, [], 2);
 imean  = mean(stb_iinnov, 2);
 subplot(2,1,1)
-h1 = histogram(stb_iinnov(1,:),'Normalization', 'pdf', 'FaceColor', 'b'); hold on 
+h1 = histogram(stb_iinnov(1,:),'Normalization', 'pdf', 'FaceColor', 'b'); hold on
 h1 = [h1, plot(irange(1,:), normpdf(irange(1,:), imean(1,:), istd(1,:)), 'k', 'LineWidth', 1.5)];
 xlabel("innovation [m]")
 l1 = ["innov_{N}", "Normal distr."];
@@ -348,7 +348,7 @@ legend(h(1:2), "innov_{N}", "innov_{E}", 'Location', 'southeast')
 title(sprintf("innovation over %d full runs", Iter))
 
 fig9 = figure(9);    % innovation QQplot summed
-fig9.Name = "Summed Innovation QQplot (stable)"; 
+fig9.Name = "Summed Innovation QQplot (stable)";
 colororder([[0, 0, 1]; [1, 0, 0]])
 h = qqplot(stb_iinnov.');
 legend(h(1:2), "innov_{N}", "innov_{E}", 'Location', 'southeast')
